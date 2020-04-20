@@ -11,54 +11,52 @@ def message_data(info):
   pdb.gimp_message(info)
 
 def dumpStroke(stroke):
-	polygon_points=[]
-	length=stroke.get_length(.1)
-	(points,closed)=stroke.points
-	for i in range(0,len(points),6):
-		polygon_points.append(int(points[i+2]))
-		polygon_points.append(int(points[i+3]))
-	polygon_points.append(int(points[2]))
-	polygon_points.append(int(points[3]))
-	return polygon_points
+
+    polygon_points=[]
+
+    points=stroke.points[0]
+
+    for i in range(2,len(points),6):
+
+        x, y = points[i: i + 2]
+
+        polygon_points.extend([int(x), int(y)])
+
+
+    polygon_points.extend([int(points[2]),int(points[3])])
+
+    return polygon_points
 
 def path_dump(image,name):
-    totalLength=0
-    totalPoints=0
-    strokesCount=0
     polygons={
         "Scenes":[
             {
                 "Name":name,
-                "Obstacles":{},
+                "Obstacles":[],
                 "Background":""
             }
         ]
     }
-    
+
     objects=[]
-    
+
     for num,path in enumerate(image.vectors, start=1):
+        stroke=path.strokes[0]
         if num==len(image.vectors):
             polygons["Scenes"][0].update({"WalkArea":dumpStroke(stroke)})
         else:
-            for stroke in path.strokes:
-                strokesCount=strokesCount+1
-                (strokePoints,closed)=stroke.points
-                totalPoints=totalPoints+(len(strokePoints)/6)
-                length=pdb.gimp_vectors_stroke_get_length(path, stroke.ID, .1)
-                totalLength=totalLength+length
-                if "obj" in path.name.lower():
-                    objects.append(
-                    {
-                        "Name":path.name,
-                        "Area":dumpStroke(stroke)
-                    })
-                    
-                else:
-            	    polygons["Scenes"][0]["Obstacles"].update(
-            		{
-            			path.name:dumpStroke(stroke)
-	                })
+            if "obj" in path.name.lower():
+                objects.append(
+                {
+                    "Name":path.name,
+                    "Area":dumpStroke(stroke)
+                })
+
+            else:
+        	    polygons["Scenes"][0]["Obstacles"].append(
+        		[
+        			dumpStroke(stroke)
+                ])
 
     return polygons,objects
 
@@ -66,9 +64,9 @@ def layer_offsets(img):
     capas ={
         "Objects":[]
     }
-    
+
     fondo=img.layers[len(img.layers)-1].name
-    
+
     for num,layer in enumerate(img.layers, start=1):
         if num!=len(img.layers):
             pos=[layer.offsets[0]+layer.width/2,layer.offsets[1]+layer.height]
@@ -83,13 +81,13 @@ def layer_offsets(img):
 
 def export_JSGAM(img, path, name):
     jsgamInfo={}
-    
+
     capas,fondo=layer_offsets(img)
     poligonos,objetos=path_dump(img,name)
-    
+
     jsgamInfo.update(capas)
     jsgamInfo.update(poligonos)
-    
+
     jsgamInfo["Scenes"][0]["Background"]=fondo
     jsgamInfo["Objects"].extend(objetos)
 
@@ -119,4 +117,3 @@ register(
     export_JSGAM, menu="<Image>/File/Export")
 
 main()
-
